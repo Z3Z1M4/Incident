@@ -17,7 +17,6 @@
       margin: 0 auto;
     }
     a { color: #0a84ff; text-decoration: none; font-size: 16px; }
-    h1 { font-size: 24px; margin-top: 16px; }
     h2 { font-size: 18px; margin-top: 30px; }
     .card {
       background: #2c2c2e;
@@ -32,11 +31,48 @@
       padding-left: 12px;
       margin-bottom: 12px;
     }
+    #incident-title-input {
+      width: 100%;
+      font-size: 24px;
+      font-weight: 700;
+      background: none;
+      border: none;
+      color: white;
+      margin-top: 16px;
+      padding: 8px 0;
+      border-bottom: 2px solid transparent;
+    }
+    #incident-title-input:focus {
+      outline: none;
+      border-bottom: 2px solid #ff453a;
+    }
+    #incident-notes {
+      width: 100%;
+      min-height: 140px;
+      background: #2c2c2e;
+      color: white;
+      border: none;
+      border-radius: 12px;
+      padding: 16px;
+      font-size: 16px;
+      font-family: inherit;
+      margin-top: 10px;
+      resize: vertical;
+    }
+    #incident-notes:focus {
+      outline: 2px solid #ff453a;
+    }
+    #save-status {
+      font-size: 13px;
+      color: #8e8e93;
+      height: 18px;
+      margin-top: 6px;
+    }
   </style>
 </head>
 <body>
   <a href="index.html">&larr; Terug</a>
-  <h1 id="incident-title">Incident laden...</h1>
+  <input id="incident-title-input" placeholder="Titel..." disabled>
 
   <div class="card">
     <div class="label">Datum en uur</div>
@@ -44,6 +80,10 @@
     <div class="label">Locatie</div>
     <div class="value" id="incident-location">-</div>
   </div>
+
+  <h2>Notities</h2>
+  <textarea id="incident-notes" placeholder="Voeg hier notities toe..." disabled></textarea>
+  <div id="save-status"></div>
 
   <h2>Tijdlijn</h2>
   <div id="timeline">Laden...</div>
@@ -56,9 +96,18 @@
     const params = new URLSearchParams(window.location.search);
     const incidentId = params.get('id');
 
+    const titleInput = document.getElementById('incident-title-input');
+    const notesInput = document.getElementById('incident-notes');
+    const saveStatus = document.getElementById('save-status');
+
+    let laatstOpgeslagenTitel = "";
+    let laatstOpgeslagenNotes = "";
+    let titleTimer = null;
+    let notesTimer = null;
+
     async function laadIncident() {
       if (!incidentId) {
-        document.getElementById('incident-title').textContent = "Geen incident gevonden.";
+        titleInput.placeholder = "Geen incident gevonden.";
         return;
       }
 
@@ -69,11 +118,17 @@
         .single();
 
       if (error || !incident) {
-        document.getElementById('incident-title').textContent = "Incident niet gevonden.";
+        titleInput.placeholder = "Incident niet gevonden.";
         return;
       }
 
-      document.getElementById('incident-title').textContent = incident.title;
+      titleInput.value = incident.title || "";
+      laatstOpgeslagenTitel = incident.title || "";
+      titleInput.disabled = false;
+
+      notesInput.value = incident.notes || "";
+      laatstOpgeslagenNotes = incident.notes || "";
+      notesInput.disabled = false;
 
       const datum = new Date(incident.created_at);
       document.getElementById('incident-datetime').textContent = datum.toLocaleString('nl-BE');
@@ -113,6 +168,58 @@
         timelineEl.appendChild(item);
       });
     }
+
+    async function slaTitelOp() {
+      const nieuweWaarde = titleInput.value.trim();
+      if (nieuweWaarde === laatstOpgeslagenTitel) return;
+
+      saveStatus.textContent = "Opslaan...";
+      await supabaseClient
+        .from('incidents')
+        .update({ title: nieuweWaarde, updated_at: new Date().toISOString() })
+        .eq('id', incidentId);
+
+      await supabaseClient
+        .from('timeline_events')
+        .insert({ incident_id: incidentId, event_text: "Titel aangepast" });
+
+      laatstOpgeslagenTitel = nieuweWaarde;
+      saveStatus.textContent = "Opgeslagen";
+      laadTijdlijn();
+      setTimeout(() => { saveStatus.textContent = ""; }, 2000);
+    }
+
+    async function slaNotitieOp() {
+      const nieuweWaarde = notesInput.value.trim();
+      if (nieuweWaarde === laatstOpgeslagenNotes) return;
+
+      saveStatus.textContent = "Opslaan...";
+      await supabaseClient
+        .from('incidents')
+        .update({ notes: nieuweWaarde, updated_at: new Date().toISOString() })
+        .eq('id', incidentId);
+
+      await supabaseClient
+        .from('timeline_events')
+        .insert({ incident_id: incidentId, event_text: "Notitie aangepast" });
+
+      laatstOpgeslagenNotes = nieuweWaarde;
+      saveStatus.textContent = "Opgeslagen";
+      laadTijdlijn();
+      setTimeout(() => { saveStatus.textContent = ""; }, 2000);
+    }
+
+    titleInput.addEventListener('input', () => {
+      clearTimeout(titleTimer);
+      titleTimer = setTimeout(slaTitelOp, 1500);
+    });
+    titleInput.addEventListener('blur', slaTitelOp);
+
+    notesInput.addEventListener('input', () => {
+      clearTimeout(notesTimer);
+      notesTimer = setTimeout(slaNotitieOp, 1500);
+    });
+    notesInput.addEventListener('blur', slaNotitieOp);
 
     laadIncident();
   </script>
