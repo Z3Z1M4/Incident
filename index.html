@@ -112,10 +112,23 @@
         clearTimeout(timeoutId);
         const data = await response.json();
         const adres = data.address || {};
+
         const straat = adres.road || adres.pedestrian || adres.footway || "";
         const nummer = adres.house_number || "";
-        if (straat && nummer) return straat + " " + nummer;
-        if (straat) return straat;
+        const gemeente = adres.city || adres.town || adres.village || adres.municipality || "";
+        const postcode = adres.postcode || "";
+
+        let straatDeel = "";
+        if (straat && nummer) straatDeel = straat + " " + nummer;
+        else if (straat) straatDeel = straat;
+
+        let gemeenteDeel = "";
+        if (postcode && gemeente) gemeenteDeel = postcode + " " + gemeente;
+        else if (gemeente) gemeenteDeel = gemeente;
+
+        if (straatDeel && gemeenteDeel) return straatDeel + ", " + gemeenteDeel;
+        if (straatDeel) return straatDeel;
+        if (gemeenteDeel) return gemeenteDeel;
         return null;
       } catch (e) {
         return null;

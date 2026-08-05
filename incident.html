@@ -145,10 +145,28 @@
       margin-top: 10px;
       display: none;
     }
+    .quick-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .quick-btn {
+      background-color: #1c2e3a;
+      color: #5ac8fa;
+      border: 1px solid #5ac8fa;
+      border-radius: 12px;
+      padding: 14px 8px;
+      font-size: 14px;
+      font-weight: 600;
+      text-align: center;
+    }
+    .quick-btn:active { background-color: #5ac8fa; color: #1c1c1e; }
     @media (min-width: 700px) {
       body { max-width: 800px; }
       .photo-grid { grid-template-columns: repeat(5, 1fr); }
       h1, #incident-title-input { font-size: 30px; }
+      .quick-actions { grid-template-columns: repeat(4, 1fr); }
     }
   </style>
 </head>
@@ -161,6 +179,14 @@
     <div class="value" id="incident-datetime">-</div>
     <div class="label">Locatie</div>
     <div class="value" id="incident-location">-</div>
+  </div>
+
+  <h2>Snelle acties</h2>
+  <div class="quick-actions">
+    <button class="quick-btn" data-text="Gehandboeid">Gehandboeid</button>
+    <button class="quick-btn" data-text="Veiligheidsfouille">Veiligheidsfouille</button>
+    <button class="quick-btn" data-text="Gerechtelijke fouille">Gerechtelijke fouille</button>
+    <button class="quick-btn" data-text="Fouille opsluiting">Fouille opsluiting</button>
   </div>
 
   <h2>Nieuwe notitie</h2>
@@ -319,6 +345,19 @@
     });
     titleInput.addEventListener('blur', slaTitelOp);
     addNoteBtn.addEventListener('click', voegNotitieToe);
+
+    // ---- Snelle acties ----
+    document.querySelectorAll('.quick-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        btn.disabled = true;
+        await supabaseClient.from('timeline_events')
+          .insert({ incident_id: incidentId, event_text: btn.dataset.text });
+        await supabaseClient.from('incidents')
+          .update({ updated_at: new Date().toISOString() }).eq('id', incidentId);
+        btn.disabled = false;
+        laadTijdlijn();
+      });
+    });
 
     // ---- Foto's ----
     const photoInput = document.getElementById('photo-input');
