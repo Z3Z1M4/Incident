@@ -2,7 +2,7 @@
 <html lang="nl">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Snelle notitie - Incident Capture</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
@@ -13,16 +13,31 @@
       background-color: #1c1c1e;
       color: white;
       padding: 20px;
+      padding-bottom: max(30px, env(safe-area-inset-bottom));
       max-width: 500px;
       margin: 0 auto;
+      position: relative;
+      overflow-x: hidden;
+    }
+    .bg-watermark {
+      position: fixed;
+      inset: 0;
+      background-image: url('https://uvbsjnzarddzwudqvheb.supabase.co/storage/v1/object/public/app-assets/Schermafbeelding%202026-08-05%20043606.png');
+      background-repeat: no-repeat;
+      background-position: center;
+      background-size: 55%;
+      opacity: 0.05;
+      pointer-events: none;
+      z-index: 0;
     }
     a { color: #0a84ff; text-decoration: none; font-size: 16px; }
-    h1 { font-size: 24px; margin-top: 16px; }
+    h1 { font-size: 24px; margin-top: 16px; letter-spacing: -0.3px; }
     .card {
       background: #2c2c2e;
       padding: 16px;
-      border-radius: 12px;
+      border-radius: 16px;
       margin-top: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
     }
     .label { color: #8e8e93; font-size: 13px; }
     .value { font-size: 17px; margin-bottom: 12px; }
@@ -32,12 +47,13 @@
       background: #2c2c2e;
       color: white;
       border: none;
-      border-radius: 12px;
+      border-radius: 16px;
       padding: 16px;
       font-size: 16px;
       font-family: inherit;
       margin-top: 16px;
       resize: vertical;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
     }
     #note-text:focus { outline: 2px solid #ff453a; }
     #save-status { font-size: 13px; color: #8e8e93; height: 18px; margin-top: 6px; }
@@ -48,8 +64,9 @@
   </style>
 </head>
 <body>
-  <a href="index.html">&larr; Terug</a>
-  <h1>Snelle notitie</h1>
+  <div class="bg-watermark"></div>
+  <a href="index.html">‹ Terug</a>
+  <h1>📝 Snelle notitie</h1>
 
   <div class="card">
     <div class="label">Datum en uur</div>

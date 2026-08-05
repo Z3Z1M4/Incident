@@ -2,7 +2,7 @@
 <html lang="nl">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Incident - Incident Capture</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
@@ -13,16 +13,31 @@
       background-color: #1c1c1e;
       color: white;
       padding: 20px;
+      padding-bottom: max(40px, env(safe-area-inset-bottom));
       max-width: 500px;
       margin: 0 auto;
+      position: relative;
+      overflow-x: hidden;
+    }
+    .bg-watermark {
+      position: fixed;
+      inset: 0;
+      background-image: url('https://uvbsjnzarddzwudqvheb.supabase.co/storage/v1/object/public/app-assets/Schermafbeelding%202026-08-05%20043606.png');
+      background-repeat: no-repeat;
+      background-position: center;
+      background-size: 55%;
+      opacity: 0.05;
+      pointer-events: none;
+      z-index: 0;
     }
     a { color: #0a84ff; text-decoration: none; font-size: 16px; }
-    h2 { font-size: 18px; margin-top: 30px; }
+    h2 { font-size: 18px; margin-top: 32px; letter-spacing: -0.2px; }
     .card {
       background: #2c2c2e;
       padding: 16px;
-      border-radius: 12px;
+      border-radius: 16px;
       margin-top: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
     }
     .label { color: #8e8e93; font-size: 13px; }
     .value { font-size: 17px; margin-bottom: 12px; }
@@ -48,11 +63,12 @@
       background: #2c2c2e;
       color: white;
       border: none;
-      border-radius: 12px;
+      border-radius: 14px;
       padding: 14px;
       font-size: 16px;
       font-family: inherit;
       margin-top: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
     }
     textarea { min-height: 100px; resize: vertical; }
     input:focus, textarea:focus { outline: 2px solid #ff453a; }
@@ -63,11 +79,13 @@
       background-color: #ff453a;
       color: white;
       border: none;
-      border-radius: 12px;
+      border-radius: 14px;
       padding: 14px;
       font-size: 17px;
       font-weight: 600;
+      transition: transform 0.1s ease;
     }
+    .btn-red:active { transform: scale(0.97); }
     .btn-red:disabled { opacity: 0.5; }
     #save-status { font-size: 13px; color: #8e8e93; height: 18px; margin-top: 6px; }
     .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
@@ -92,12 +110,13 @@
     .details-box.open { display: block; }
     .entity-card {
       background: #2c2c2e;
-      border-radius: 12px;
+      border-radius: 14px;
       padding: 14px;
       margin-top: 10px;
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
     }
     .entity-title { font-weight: 600; font-size: 16px; }
     .entity-sub { font-size: 13px; color: #8e8e93; margin-top: 4px; }
@@ -110,7 +129,8 @@
       margin-bottom: 4px;
     }
     .del-btn { background: none; border: none; color: #ff453a; font-size: 18px; padding: 4px 8px; }
-    .add-box { background: #232325; border-radius: 12px; padding: 14px; margin-top: 12px; }
+    .add-box { background: #232325; border-radius: 16px; padding: 14px; margin-top: 12px; }
+    .empty-hint { color: #8e8e93; font-size: 14px; margin-top: 10px; }
 
     .photo-grid {
       display: grid;
@@ -121,9 +141,10 @@
     .photo-thumb {
       position: relative;
       aspect-ratio: 1;
-      border-radius: 10px;
+      border-radius: 12px;
       overflow: hidden;
       background: #2c2c2e;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
     }
     .photo-thumb img {
       width: 100%;
@@ -141,7 +162,7 @@
     #photo-preview {
       max-width: 100%;
       max-height: 200px;
-      border-radius: 12px;
+      border-radius: 14px;
       margin-top: 10px;
       display: none;
     }
@@ -155,13 +176,14 @@
       background-color: #1c2e3a;
       color: #5ac8fa;
       border: 1px solid #5ac8fa;
-      border-radius: 12px;
+      border-radius: 14px;
       padding: 14px 8px;
       font-size: 14px;
       font-weight: 600;
       text-align: center;
+      transition: transform 0.1s ease;
     }
-    .quick-btn:active { background-color: #5ac8fa; color: #1c1c1e; }
+    .quick-btn:active { background-color: #5ac8fa; color: #1c1c1e; transform: scale(0.97); }
     @media (min-width: 700px) {
       body { max-width: 800px; }
       .photo-grid { grid-template-columns: repeat(5, 1fr); }
@@ -171,7 +193,8 @@
   </style>
 </head>
 <body>
-  <a href="index.html">&larr; Terug</a>
+  <div class="bg-watermark"></div>
+  <a href="index.html">‹ Terug</a>
   <input id="incident-title-input" placeholder="Titel..." disabled>
 
   <div class="card">
@@ -181,7 +204,7 @@
     <div class="value" id="incident-location">-</div>
   </div>
 
-  <h2>Snelle acties</h2>
+  <h2>⚡ Snelle acties</h2>
   <div class="quick-actions">
     <button class="quick-btn" data-text="Gehandboeid">Gehandboeid</button>
     <button class="quick-btn" data-text="Veiligheidsfouille">Veiligheidsfouille</button>
@@ -189,12 +212,12 @@
     <button class="quick-btn" data-text="Fouille opsluiting">Fouille opsluiting</button>
   </div>
 
-  <h2>Nieuwe notitie</h2>
+  <h2>🗒️ Nieuwe notitie</h2>
   <textarea id="incident-notes" placeholder="Typ hier een notitie..." disabled></textarea>
   <button class="btn-red" id="add-note-btn" disabled>Toevoegen</button>
   <div id="save-status"></div>
 
-  <h2>Foto's</h2>
+  <h2>📷 Foto's</h2>
   <div class="photo-grid" id="photos-list"></div>
   <div class="add-box">
     <input type="file" id="photo-input" accept="image/*">
@@ -204,7 +227,7 @@
     <div id="photo-status" style="font-size:13px;color:#8e8e93;margin-top:6px;"></div>
   </div>
 
-  <h2>Personen</h2>
+  <h2>👤 Personen</h2>
   <div id="persons-list"></div>
   <div class="add-box">
     <input type="text" id="person-name" placeholder="Naam">
@@ -224,7 +247,7 @@
     <button class="btn-red" id="add-person-btn">Persoon toevoegen</button>
   </div>
 
-  <h2>Voertuigen</h2>
+  <h2>🚗 Voertuigen</h2>
   <div id="vehicles-list"></div>
   <div class="add-box">
     <input type="text" id="vehicle-plate" placeholder="Kenteken">
@@ -235,7 +258,7 @@
     <button class="btn-red" id="add-vehicle-btn">Voertuig toevoegen</button>
   </div>
 
-  <h2>Tijdlijn</h2>
+  <h2>🕐 Tijdlijn</h2>
   <div id="timeline">Laden...</div>
 
   <script>
@@ -301,7 +324,7 @@
       timelineEl.innerHTML = '';
 
       if (error || !events || events.length === 0) {
-        timelineEl.textContent = "Nog geen gebeurtenissen.";
+        timelineEl.innerHTML = '<div class="empty-hint">Nog geen gebeurtenissen.</div>';
         return;
       }
 
