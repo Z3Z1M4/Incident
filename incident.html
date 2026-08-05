@@ -42,25 +42,22 @@
       padding: 8px 0;
       border-bottom: 2px solid transparent;
     }
-    #incident-title-input:focus {
-      outline: none;
-      border-bottom: 2px solid #ff453a;
-    }
-    #incident-notes {
+    #incident-title-input:focus { outline: none; border-bottom: 2px solid #ff453a; }
+    textarea, input[type=text], input[type=tel], input[type=date] {
       width: 100%;
-      min-height: 100px;
       background: #2c2c2e;
       color: white;
       border: none;
       border-radius: 12px;
-      padding: 16px;
+      padding: 14px;
       font-size: 16px;
       font-family: inherit;
-      margin-top: 10px;
-      resize: vertical;
+      margin-top: 8px;
     }
-    #incident-notes:focus { outline: 2px solid #ff453a; }
-    #add-note-btn {
+    textarea { min-height: 100px; resize: vertical; }
+    input:focus, textarea:focus { outline: 2px solid #ff453a; }
+    button { cursor: pointer; }
+    .btn-red {
       margin-top: 10px;
       width: 100%;
       background-color: #ff453a;
@@ -70,15 +67,50 @@
       padding: 14px;
       font-size: 17px;
       font-weight: 600;
-      cursor: pointer;
     }
-    #add-note-btn:disabled { opacity: 0.5; }
-    #save-status {
-      font-size: 13px;
+    .btn-red:disabled { opacity: 0.5; }
+    #save-status { font-size: 13px; color: #8e8e93; height: 18px; margin-top: 6px; }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+    .chip {
+      background: #2c2c2e;
       color: #8e8e93;
-      height: 18px;
-      margin-top: 6px;
+      border: 1px solid #444;
+      border-radius: 20px;
+      padding: 8px 16px;
+      font-size: 14px;
     }
+    .chip.selected { background: #ff453a; color: white; border-color: #ff453a; }
+    .details-toggle {
+      background: none;
+      border: none;
+      color: #0a84ff;
+      font-size: 14px;
+      margin-top: 8px;
+      padding: 4px 0;
+    }
+    .details-box { display: none; margin-top: 8px; }
+    .details-box.open { display: block; }
+    .entity-card {
+      background: #2c2c2e;
+      border-radius: 12px;
+      padding: 14px;
+      margin-top: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+    .entity-title { font-weight: 600; font-size: 16px; }
+    .entity-sub { font-size: 13px; color: #8e8e93; margin-top: 4px; }
+    .role-badge {
+      display: inline-block;
+      font-size: 11px;
+      background: #ff453a;
+      padding: 2px 8px;
+      border-radius: 8px;
+      margin-bottom: 4px;
+    }
+    .del-btn { background: none; border: none; color: #ff453a; font-size: 18px; padding: 4px 8px; }
+    .add-box { background: #232325; border-radius: 12px; padding: 14px; margin-top: 12px; }
   </style>
 </head>
 <body>
@@ -94,8 +126,39 @@
 
   <h2>Nieuwe notitie</h2>
   <textarea id="incident-notes" placeholder="Typ hier een notitie..." disabled></textarea>
-  <button id="add-note-btn" disabled>Toevoegen</button>
+  <button class="btn-red" id="add-note-btn" disabled>Toevoegen</button>
   <div id="save-status"></div>
+
+  <h2>Personen</h2>
+  <div id="persons-list"></div>
+  <div class="add-box">
+    <input type="text" id="person-name" placeholder="Naam">
+    <div class="chips" id="person-role-chips">
+      <div class="chip" data-role="verdachte">Verdachte</div>
+      <div class="chip" data-role="slachtoffer">Slachtoffer</div>
+      <div class="chip" data-role="getuige">Getuige</div>
+      <div class="chip" data-role="bron">Bron</div>
+      <div class="chip" data-role="andere">Andere</div>
+    </div>
+    <button class="details-toggle" id="person-details-toggle">+ Meer details (optioneel)</button>
+    <div class="details-box" id="person-details-box">
+      <input type="date" id="person-birthdate">
+      <input type="tel" id="person-phone" placeholder="Telefoonnummer">
+      <textarea id="person-notes" placeholder="Opmerkingen"></textarea>
+    </div>
+    <button class="btn-red" id="add-person-btn">Persoon toevoegen</button>
+  </div>
+
+  <h2>Voertuigen</h2>
+  <div id="vehicles-list"></div>
+  <div class="add-box">
+    <input type="text" id="vehicle-plate" placeholder="Kenteken">
+    <button class="details-toggle" id="vehicle-details-toggle">+ Opmerkingen (optioneel)</button>
+    <div class="details-box" id="vehicle-details-box">
+      <textarea id="vehicle-notes" placeholder="Opmerkingen"></textarea>
+    </div>
+    <button class="btn-red" id="add-vehicle-btn">Voertuig toevoegen</button>
+  </div>
 
   <h2>Tijdlijn</h2>
   <div id="timeline">Laden...</div>
@@ -117,26 +180,16 @@
     let titleTimer = null;
 
     async function laadIncident() {
-      if (!incidentId) {
-        titleInput.placeholder = "Geen incident gevonden.";
-        return;
-      }
+      if (!incidentId) { titleInput.placeholder = "Geen incident gevonden."; return; }
 
       const { data: incident, error } = await supabaseClient
-        .from('incidents')
-        .select('*')
-        .eq('id', incidentId)
-        .single();
+        .from('incidents').select('*').eq('id', incidentId).single();
 
-      if (error || !incident) {
-        titleInput.placeholder = "Incident niet gevonden.";
-        return;
-      }
+      if (error || !incident) { titleInput.placeholder = "Incident niet gevonden."; return; }
 
       titleInput.value = incident.title || "";
       laatstOpgeslagenTitel = incident.title || "";
       titleInput.disabled = false;
-
       notesInput.disabled = false;
       addNoteBtn.disabled = false;
 
@@ -153,14 +206,14 @@
       }
 
       laadTijdlijn();
+      laadPersonen();
+      laadVoertuigen();
     }
 
     async function laadTijdlijn() {
       const { data: events, error } = await supabaseClient
-        .from('timeline_events')
-        .select('*')
-        .eq('incident_id', incidentId)
-        .order('created_at', { ascending: false });
+        .from('timeline_events').select('*')
+        .eq('incident_id', incidentId).order('created_at', { ascending: false });
 
       const timelineEl = document.getElementById('timeline');
       timelineEl.innerHTML = '';
@@ -182,16 +235,10 @@
     async function slaTitelOp() {
       const nieuweWaarde = titleInput.value.trim();
       if (nieuweWaarde === laatstOpgeslagenTitel) return;
-
-      await supabaseClient
-        .from('incidents')
-        .update({ title: nieuweWaarde, updated_at: new Date().toISOString() })
-        .eq('id', incidentId);
-
-      await supabaseClient
-        .from('timeline_events')
+      await supabaseClient.from('incidents')
+        .update({ title: nieuweWaarde, updated_at: new Date().toISOString() }).eq('id', incidentId);
+      await supabaseClient.from('timeline_events')
         .insert({ incident_id: incidentId, event_text: "Titel aangepast" });
-
       laatstOpgeslagenTitel = nieuweWaarde;
       laadTijdlijn();
     }
@@ -199,19 +246,10 @@
     async function voegNotitieToe() {
       const tekst = notesInput.value.trim();
       if (!tekst) return;
-
       addNoteBtn.disabled = true;
       saveStatus.textContent = "Toevoegen...";
-
-      await supabaseClient
-        .from('timeline_events')
-        .insert({ incident_id: incidentId, event_text: tekst });
-
-      await supabaseClient
-        .from('incidents')
-        .update({ updated_at: new Date().toISOString() })
-        .eq('id', incidentId);
-
+      await supabaseClient.from('timeline_events').insert({ incident_id: incidentId, event_text: tekst });
+      await supabaseClient.from('incidents').update({ updated_at: new Date().toISOString() }).eq('id', incidentId);
       notesInput.value = "";
       addNoteBtn.disabled = false;
       saveStatus.textContent = "Toegevoegd";
@@ -224,8 +262,138 @@
       titleTimer = setTimeout(slaTitelOp, 1500);
     });
     titleInput.addEventListener('blur', slaTitelOp);
-
     addNoteBtn.addEventListener('click', voegNotitieToe);
+
+    // ---- Personen ----
+    let geselecteerdeRol = null;
+    document.querySelectorAll('#person-role-chips .chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        document.querySelectorAll('#person-role-chips .chip').forEach(c => c.classList.remove('selected'));
+        chip.classList.add('selected');
+        geselecteerdeRol = chip.dataset.role;
+      });
+    });
+
+    document.getElementById('person-details-toggle').addEventListener('click', () => {
+      document.getElementById('person-details-box').classList.toggle('open');
+    });
+    document.getElementById('vehicle-details-toggle').addEventListener('click', () => {
+      document.getElementById('vehicle-details-box').classList.toggle('open');
+    });
+
+    const rolLabels = { verdachte: 'Verdachte', slachtoffer: 'Slachtoffer', getuige: 'Getuige', bron: 'Bron', andere: 'Andere' };
+
+    document.getElementById('add-person-btn').addEventListener('click', async () => {
+      const naam = document.getElementById('person-name').value.trim();
+      if (!naam) { alert("Vul een naam in."); return; }
+      const rol = geselecteerdeRol || 'andere';
+
+      await supabaseClient.from('persons').insert({
+        incident_id: incidentId,
+        name: naam,
+        role: rol,
+        birth_date: document.getElementById('person-birthdate').value || null,
+        phone: document.getElementById('person-phone').value.trim() || null,
+        notes: document.getElementById('person-notes').value.trim() || null
+      });
+
+      await supabaseClient.from('timeline_events')
+        .insert({ incident_id: incidentId, event_text: "Persoon toegevoegd: " + naam });
+
+      document.getElementById('person-name').value = "";
+      document.getElementById('person-birthdate').value = "";
+      document.getElementById('person-phone').value = "";
+      document.getElementById('person-notes').value = "";
+      document.querySelectorAll('#person-role-chips .chip').forEach(c => c.classList.remove('selected'));
+      geselecteerdeRol = null;
+      document.getElementById('person-details-box').classList.remove('open');
+
+      laadPersonen();
+      laadTijdlijn();
+    });
+
+    async function laadPersonen() {
+      const { data: persons } = await supabaseClient
+        .from('persons').select('*').eq('incident_id', incidentId).order('created_at', { ascending: false });
+
+      const listEl = document.getElementById('persons-list');
+      listEl.innerHTML = '';
+      (persons || []).forEach(p => {
+        const div = document.createElement('div');
+        div.className = 'entity-card';
+        let extra = '';
+        if (p.birth_date) extra += 'Geboren: ' + p.birth_date + '<br>';
+        if (p.phone) extra += 'Tel: ' + p.phone + '<br>';
+        if (p.notes) extra += p.notes;
+        div.innerHTML = `
+          <div>
+            <div class="role-badge">${rolLabels[p.role] || p.role}</div>
+            <div class="entity-title">${p.name}</div>
+            <div class="entity-sub">${extra}</div>
+          </div>
+          <button class="del-btn" data-id="${p.id}">🗑️</button>
+        `;
+        listEl.appendChild(div);
+      });
+
+      listEl.querySelectorAll('.del-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          if (!confirm("Deze persoon verwijderen?")) return;
+          await supabaseClient.from('persons').delete().eq('id', btn.dataset.id);
+          laadPersonen();
+        });
+      });
+    }
+
+    // ---- Voertuigen ----
+    document.getElementById('add-vehicle-btn').addEventListener('click', async () => {
+      const kenteken = document.getElementById('vehicle-plate').value.trim();
+      if (!kenteken) { alert("Vul een kenteken in."); return; }
+
+      await supabaseClient.from('vehicles').insert({
+        incident_id: incidentId,
+        plate: kenteken,
+        notes: document.getElementById('vehicle-notes').value.trim() || null
+      });
+
+      await supabaseClient.from('timeline_events')
+        .insert({ incident_id: incidentId, event_text: "Voertuig toegevoegd: " + kenteken });
+
+      document.getElementById('vehicle-plate').value = "";
+      document.getElementById('vehicle-notes').value = "";
+      document.getElementById('vehicle-details-box').classList.remove('open');
+
+      laadVoertuigen();
+      laadTijdlijn();
+    });
+
+    async function laadVoertuigen() {
+      const { data: vehicles } = await supabaseClient
+        .from('vehicles').select('*').eq('incident_id', incidentId).order('created_at', { ascending: false });
+
+      const listEl = document.getElementById('vehicles-list');
+      listEl.innerHTML = '';
+      (vehicles || []).forEach(v => {
+        const div = document.createElement('div');
+        div.className = 'entity-card';
+        div.innerHTML = `
+          <div>
+            <div class="entity-title">${v.plate}</div>
+            <div class="entity-sub">${v.notes || ''}</div>
+          </div>
+          <button class="del-btn" data-id="${v.id}">🗑️</button>
+        `;
+        listEl.appendChild(div);
+      });
+
+      listEl.querySelectorAll('.del-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          if (!confirm("Dit voertuig verwijderen?")) return;
+          await supabaseClient.from('vehicles').delete().eq('id', btn.dataset.id);
+          laadVoertuigen();
+        });
+      });
+    }
 
     laadIncident();
   </script>
