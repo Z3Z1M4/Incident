@@ -84,12 +84,47 @@
       );
     });
 
+    async function zoekStraatnaam(lat, lng) {
+      try {
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`
+        );
+        const data = await response.json();
+        const adres = data.address || {};
+
+        const straat = adres.road || adres.pedestrian || adres.footway || "";
+        const nummer = adres.house_number || "";
+
+        if (straat && nummer) return straat + " " + nummer;
+        if (straat) return straat;
+        return null;
+      } catch (e) {
+        return null;
+      }
+    }
+
     async function maakIncidentAan(lat, lng) {
       statusEl.textContent = "Incident aanmaken...";
 
+      let straatnaam = null;
+      if (lat && lng) {
+        statusEl.textContent = "Adres opzoeken...";
+        straatnaam = await zoekStraatnaam(lat, lng);
+      }
+
+      const nieuwIncident = {
+        latitude: lat,
+        longitude: lng,
+        street: straatnaam
+      };
+
+      if (straatnaam) {
+        nieuwIncident.title = straatnaam;
+      }
+
       const { data: incident, error } = await supabaseClient
         .from('incidents')
-        .insert({ latitude: lat, longitude: lng })
+        .insert(nieuwIncident)
         .select()
         .single();
 
@@ -107,4 +142,3 @@
     }
   </script>
 </body>
-</html>
