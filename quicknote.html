@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Snelle notitie - Incident Capture</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, sans-serif;
+      background-color: #1c1c1e;
+      color: white;
+      padding: 20px;
+      max-width: 500px;
+      margin: 0 auto;
+    }
+    a { color: #0a84ff; text-decoration: none; font-size: 16px; }
+    h1 { font-size: 24px; margin-top: 16px; }
+    .card {
+      background: #2c2c2e;
+      padding: 16px;
+      border-radius: 12px;
+      margin-top: 16px;
+    }
+    .label { color: #8e8e93; font-size: 13px; }
+    .value { font-size: 17px; margin-bottom: 12px; }
+    #note-text {
+      width: 100%;
+      min-height: 160px;
+      background: #2c2c2e;
+      color: white;
+      border: none;
+      border-radius: 12px;
+      padding: 16px;
+      font-size: 16px;
+      font-family: inherit;
+      margin-top: 16px;
+      resize: vertical;
+    }
+    #note-text:focus { outline: 2px solid #ff453a; }
+    #save-status { font-size: 13px; color: #8e8e93; height: 18px; margin-top: 6px; }
+  </style>
+</head>
+<body>
+  <a href="index.html">&larr; Terug</a>
+  <h1>Snelle notitie</h1>
+
+  <div class="card">
+    <div class="label">Datum en uur</div>
+    <div class="value" id="note-datetime">-</div>
+    <div class="label">Locatie</div>
+    <div class="value" id="note-location">-</div>
+  </div>
+
+  <textarea id="note-text" placeholder="Typ hier je notitie..." disabled></textarea>
+  <div id="save-status"></div>
+
+  <script>
+    const SUPABASE_URL = "https://uvbsjnzarddzwudqvheb.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV2YnNqbnphcmRkend1ZHF2aGViIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU4Nzg4MjMsImV4cCI6MjEwMTQ1NDgyM30.Yg9cGj3c3ZiT9FTHgtt7ilqWlQpYUqHX9A1D7hC9kms";
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const params = new URLSearchParams(window.location.search);
+    const noteId = params.get('id');
+
+    const textEl = document.getElementById('note-text');
+    const saveStatus = document.getElementById('save-status');
+    let laatstOpgeslagen = "";
+    let timer = null;
+
+    async function laadNotitie() {
+      if (!noteId) { textEl.placeholder = "Geen notitie gevonden."; return; }
+
+      const { data: note, error } = await supabaseClient
+        .from('quick_notes').select('*').eq('id', noteId).single();
+
+      if (error || !note) { textEl.placeholder = "Notitie niet gevonden."; return; }
+
+      const datum = new Date(note.created_at);
+      document.getElementById('note-datetime').textContent = datum.toLocaleString('nl-BE');
+      document.getElementById('note-location').textContent = note.street || "Onbekend";
+
+      textEl.value = note.text || "";
+      laatstOpgeslagen = note.text || "";
+      textEl.disabled = false;
+    }
+
+    async function slaOp() {
+      const nieuweWaarde = textEl.value.trim();
+      if (nieuweWaarde === laatstOpgeslagen) return;
+
+      saveStatus.textContent = "Opslaan...";
+      await supabaseClient
+        .from('quick_notes')
+        .update({ text: nieuweWaarde, updated_at: new Date().toISOString() })
+        .eq('id', noteId);
+
+      laatstOpgeslagen = nieuweWaarde;
+      saveStatus.textContent = "Opgeslagen";
+      setTimeout(() => { saveStatus.textContent = ""; }, 2000);
+    }
+
+    textEl.addEventListener('input', () => {
+      clearTimeout(timer);
+      timer = setTimeout(slaOp, 1500);
+    });
+    textEl.addEventListener('blur', slaOp);
+
+    laadNotitie();
+  </script>
+</body>
+</html>

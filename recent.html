@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Recente incidenten - Incident Capture</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, sans-serif;
+      background-color: #1c1c1e;
+      color: white;
+      padding: 20px;
+      max-width: 500px;
+      margin: 0 auto;
+    }
+    a { color: #0a84ff; text-decoration: none; font-size: 16px; }
+    h1 { font-size: 24px; margin-top: 16px; margin-bottom: 20px; }
+    .item {
+      background: #2c2c2e;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .item-info { flex: 1; }
+    .item-title { font-size: 17px; font-weight: 600; }
+    .item-sub { font-size: 13px; color: #8e8e93; margin-top: 4px; }
+    .badge {
+      display: inline-block;
+      font-size: 11px;
+      background: #ff453a;
+      color: white;
+      padding: 2px 8px;
+      border-radius: 8px;
+      margin-bottom: 6px;
+    }
+    .delete-btn {
+      background: none;
+      border: none;
+      color: #ff453a;
+      font-size: 20px;
+      padding: 8px;
+      cursor: pointer;
+    }
+    #lijst { margin-top: 10px; }
+    #empty { color: #8e8e93; text-align: center; margin-top: 40px; }
+  </style>
+</head>
+<body>
+  <a href="index.html">&larr; Terug</a>
+  <h1>Recente incidenten</h1>
+  <div id="lijst">Laden...</div>
+
+  <script>
+    const SUPABASE_URL = "https://uvbsjnzarddzwudqvheb.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV2YnNqbnphcmRkend1ZHF2aGViIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU4Nzg4MjMsImV4cCI6MjEwMTQ1NDgyM30.Yg9cGj3c3ZiT9FTHgtt7ilqWlQpYUqHX9A1D7hC9kms";
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const lijstEl = document.getElementById('lijst');
+
+    async function laadOverzicht() {
+      const { data: incidents } = await supabaseClient
+        .from('incidents').select('*').order('created_at', { ascending: false });
+
+      const { data: notes } = await supabaseClient
+        .from('quick_notes').select('*').order('created_at', { ascending: false });
+
+      const items = [];
+
+      (incidents || []).forEach(i => items.push({
+        type: 'incident', id: i.id,
+        title: i.title || 'Naamloos incident',
+        street: i.street, created_at: i.created_at
+      }));
+
+      (notes || []).forEach(n => items.push({
+        type: 'note', id: n.id,
+        title: n.street || 'Snelle notitie',
+        street: n.street, created_at: n.created_at
+      }));
+
+      items.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+      lijstEl.innerHTML = '';
+
+      if (items.length === 0) {
+        lijstEl.innerHTML = '<div id="empty">Nog geen incidenten of notities.</div>';
+        return;
+      }
+
+      items.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'item';
+
+        const datum = new Date(item.created_at).toLocaleString('nl-BE');
+        const badge = item.type === 'note' ? '<div class="badge">Snelle notitie</div>' : '';
+        const link = item.type === 'note'
+          ? 'quicknote.html?id=' + item.id
+          : 'incident.html?id=' + item.id;
+
+        div.innerHTML = `
+          <a href="${link}" class="item-info" style="text-decoration:none;color:inherit;">
+            ${badge}
+            <div class="item-title">${item.title}</div>
+            <div class="item-sub">${datum}</div>
+          </a>
+          <button class="delete-btn" data-type="${item.type}" data-id="${item.id}">🗑️</button>
+        `;
+        lijstEl.appendChild(div);
+      });
+
+      document.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const bevestigd = confirm("Weet je zeker dat je dit wil verwijderen?");
+          if (!bevestigd) return;
+
+          const type = btn.dataset.type;
+          const id = btn.dataset.id;
+          const tabel = type === 'note' ? 'quick_notes' : 'incidents';
+
+          await supabaseClient.from(tabel).delete().eq('id', id);
+          laadOverzicht();
+        });
+      });
+    }
+
+    laadOverzicht();
+  </script>
+</body>
+</html>
