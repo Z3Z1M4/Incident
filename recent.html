@@ -61,6 +61,12 @@
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV2YnNqbnphcmRkend1ZHF2aGViIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU4Nzg4MjMsImV4cCI6MjEwMTQ1NDgyM30.Yg9cGj3c3ZiT9FTHgtt7ilqWlQpYUqHX9A1D7hC9kms";
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+    async function verifieerLogin() {
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if (!session) { window.location.href = 'login.html'; return false; }
+      return true;
+    }
+
     const lijstEl = document.getElementById('lijst');
 
     async function laadOverzicht() {
@@ -129,7 +135,7 @@
       });
     }
 
-    laadOverzicht();
+    verifieerLogin().then(ok => { if (ok) laadOverzicht(); });
   </script>
 </body>
 </html>

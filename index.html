@@ -48,6 +48,14 @@
       text-align: center;
       max-width: 400px;
     }
+    #logout-btn {
+      margin-top: 30px;
+      background: none;
+      border: none;
+      color: #8e8e93;
+      font-size: 14px;
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
@@ -58,11 +66,23 @@
     <a class="btn-secondary btn-link" href="recent.html">Recente incidenten</a>
   </div>
   <p id="status"></p>
+  <button id="logout-btn">Uitloggen</button>
 
   <script>
     const SUPABASE_URL = "https://uvbsjnzarddzwudqvheb.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV2YnNqbnphcmRkend1ZHF2aGViIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU4Nzg4MjMsImV4cCI6MjEwMTQ1NDgyM30.Yg9cGj3c3ZiT9FTHgtt7ilqWlQpYUqHX9A1D7hC9kms";
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    async function verifieerLogin() {
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if (!session) { window.location.href = 'login.html'; return false; }
+      return true;
+    }
+
+    document.getElementById('logout-btn').addEventListener('click', async () => {
+      await supabaseClient.auth.signOut();
+      window.location.href = 'login.html';
+    });
 
     const statusEl = document.getElementById('status');
 
@@ -97,9 +117,9 @@
       }
     }
 
-    // Nieuw incident
     const btnIncident = document.getElementById('btn-nieuw-incident');
     btnIncident.addEventListener('click', async () => {
+      if (!(await verifieerLogin())) return;
       btnIncident.disabled = true;
       statusEl.textContent = "Locatie ophalen...";
       const locatie = await haalLocatieOp();
@@ -134,9 +154,9 @@
       window.location.href = "incident.html?id=" + incident.id;
     });
 
-    // Snelle notitie
     const btnNotitie = document.getElementById('btn-snelle-notitie');
     btnNotitie.addEventListener('click', async () => {
+      if (!(await verifieerLogin())) return;
       btnNotitie.disabled = true;
       statusEl.textContent = "Locatie ophalen...";
       const locatie = await haalLocatieOp();
@@ -165,6 +185,8 @@
 
       window.location.href = "quicknote.html?id=" + note.id;
     });
+
+    verifieerLogin();
   </script>
 </body>
 </html>

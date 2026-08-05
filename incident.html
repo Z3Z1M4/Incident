@@ -138,14 +138,6 @@
       background: rgba(0,0,0,0.6);
       border-radius: 50%;
     }
-    .photo-desc {
-      font-size: 11px;
-      color: #8e8e93;
-      padding: 2px 4px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
     #photo-preview {
       max-width: 100%;
       max-height: 200px;
@@ -219,6 +211,12 @@
     const SUPABASE_URL = "https://uvbsjnzarddzwudqvheb.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV2YnNqbnphcmRkend1ZHF2aGViIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU4Nzg4MjMsImV4cCI6MjEwMTQ1NDgyM30.Yg9cGj3c3ZiT9FTHgtt7ilqWlQpYUqHX9A1D7hC9kms";
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    async function verifieerLogin() {
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if (!session) { window.location.href = 'login.html'; return false; }
+      return true;
+    }
 
     const params = new URLSearchParams(window.location.search);
     const incidentId = params.get('id');
@@ -534,7 +532,7 @@
       });
     }
 
-    laadIncident();
+    verifieerLogin().then(ok => { if (ok) laadIncident(); });
   </script>
 </body>
 </html>
