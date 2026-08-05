@@ -42,6 +42,7 @@
     .btn-primary { background-color: #ff453a; color: white; }
     .btn-secondary { background-color: #2c2c2e; color: white; }
     .btn-orange { background-color: #ff9500; color: white; }
+    .btn-yellow { background-color: #fff59d; color: #1c1c1e; }
     #status {
       margin-top: 20px;
       color: #8e8e93;
@@ -56,6 +57,10 @@
       font-size: 14px;
       text-decoration: underline;
     }
+    @media (min-width: 700px) {
+      .menu { max-width: 480px; }
+      h1 { font-size: 34px; }
+    }
   </style>
 </head>
 <body>
@@ -63,7 +68,7 @@
   <div class="menu">
     <button class="btn-primary" id="btn-nieuw-incident">Nieuw incident</button>
     <button class="btn-orange" id="btn-snelle-notitie">Snelle notitie</button>
-    <a class="btn-secondary btn-link" href="recent.html">Recente incidenten</a>
+    <a class="btn-yellow btn-link" href="recent.html">Recente incidenten</a>
   </div>
   <p id="status"></p>
   <button id="logout-btn">Uitloggen</button>

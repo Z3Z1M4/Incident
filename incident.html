@@ -145,6 +145,11 @@
       margin-top: 10px;
       display: none;
     }
+    @media (min-width: 700px) {
+      body { max-width: 800px; }
+      .photo-grid { grid-template-columns: repeat(5, 1fr); }
+      h1, #incident-title-input { font-size: 30px; }
+    }
   </style>
 </head>
 <body>
