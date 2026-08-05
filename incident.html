@@ -54,4 +54,67 @@
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     const params = new URLSearchParams(window.location.search);
-    const incidentId =
+    const incidentId = params.get('id');
+
+    async function laadIncident() {
+      if (!incidentId) {
+        document.getElementById('incident-title').textContent = "Geen incident gevonden.";
+        return;
+      }
+
+      const { data: incident, error } = await supabaseClient
+        .from('incidents')
+        .select('*')
+        .eq('id', incidentId)
+        .single();
+
+      if (error || !incident) {
+        document.getElementById('incident-title').textContent = "Incident niet gevonden.";
+        return;
+      }
+
+      document.getElementById('incident-title').textContent = incident.title;
+
+      const datum = new Date(incident.created_at);
+      document.getElementById('incident-datetime').textContent = datum.toLocaleString('nl-BE');
+
+      if (incident.street) {
+        document.getElementById('incident-location').textContent = incident.street;
+      } else if (incident.latitude && incident.longitude) {
+        document.getElementById('incident-location').textContent =
+          incident.latitude.toFixed(5) + ", " + incident.longitude.toFixed(5);
+      } else {
+        document.getElementById('incident-location').textContent = "Onbekend";
+      }
+
+      laadTijdlijn();
+    }
+
+    async function laadTijdlijn() {
+      const { data: events, error } = await supabaseClient
+        .from('timeline_events')
+        .select('*')
+        .eq('incident_id', incidentId)
+        .order('created_at', { ascending: false });
+
+      const timelineEl = document.getElementById('timeline');
+      timelineEl.innerHTML = '';
+
+      if (error || !events || events.length === 0) {
+        timelineEl.textContent = "Nog geen gebeurtenissen.";
+        return;
+      }
+
+      events.forEach(event => {
+        const item = document.createElement('div');
+        item.className = 'timeline-item';
+        const tijd = new Date(event.created_at).toLocaleTimeString('nl-BE', { hour: '2-digit', minute: '2-digit' });
+        item.innerHTML = '<strong>' + tijd + '</strong><br>' + event.event_text;
+        timelineEl.appendChild(item);
+      });
+    }
+
+    laadIncident();
+  </script>
+</body>
+</html>
