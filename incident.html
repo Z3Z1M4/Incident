@@ -111,6 +111,48 @@
     }
     .del-btn { background: none; border: none; color: #ff453a; font-size: 18px; padding: 4px 8px; }
     .add-box { background: #232325; border-radius: 12px; padding: 14px; margin-top: 12px; }
+
+    .photo-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .photo-thumb {
+      position: relative;
+      aspect-ratio: 1;
+      border-radius: 10px;
+      overflow: hidden;
+      background: #2c2c2e;
+    }
+    .photo-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      cursor: pointer;
+    }
+    .photo-thumb .del-btn {
+      position: absolute;
+      top: 2px;
+      right: 2px;
+      background: rgba(0,0,0,0.6);
+      border-radius: 50%;
+    }
+    .photo-desc {
+      font-size: 11px;
+      color: #8e8e93;
+      padding: 2px 4px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    #photo-preview {
+      max-width: 100%;
+      max-height: 200px;
+      border-radius: 12px;
+      margin-top: 10px;
+      display: none;
+    }
   </style>
 </head>
 <body>
@@ -128,6 +170,16 @@
   <textarea id="incident-notes" placeholder="Typ hier een notitie..." disabled></textarea>
   <button class="btn-red" id="add-note-btn" disabled>Toevoegen</button>
   <div id="save-status"></div>
+
+  <h2>Foto's</h2>
+  <div class="photo-grid" id="photos-list"></div>
+  <div class="add-box">
+    <input type="file" id="photo-input" accept="image/*">
+    <img id="photo-preview">
+    <input type="text" id="photo-description" placeholder="Beschrijving (optioneel)" style="display:none;">
+    <button class="btn-red" id="add-photo-btn" style="display:none;">Foto toevoegen</button>
+    <div id="photo-status" style="font-size:13px;color:#8e8e93;margin-top:6px;"></div>
+  </div>
 
   <h2>Personen</h2>
   <div id="persons-list"></div>
@@ -208,6 +260,7 @@
       laadTijdlijn();
       laadPersonen();
       laadVoertuigen();
+      laadFotos();
     }
 
     async function laadTijdlijn() {
@@ -263,6 +316,92 @@
     });
     titleInput.addEventListener('blur', slaTitelOp);
     addNoteBtn.addEventListener('click', voegNotitieToe);
+
+    // ---- Foto's ----
+    const photoInput = document.getElementById('photo-input');
+    const photoPreview = document.getElementById('photo-preview');
+    const photoDescription = document.getElementById('photo-description');
+    const addPhotoBtn = document.getElementById('add-photo-btn');
+    const photoStatus = document.getElementById('photo-status');
+    let geselecteerdBestand = null;
+
+    photoInput.addEventListener('change', () => {
+      const file = photoInput.files[0];
+      if (!file) return;
+      geselecteerdBestand = file;
+      photoPreview.src = URL.createObjectURL(file);
+      photoPreview.style.display = 'block';
+      photoDescription.style.display = 'block';
+      addPhotoBtn.style.display = 'block';
+    });
+
+    addPhotoBtn.addEventListener('click', async () => {
+      if (!geselecteerdBestand) return;
+      addPhotoBtn.disabled = true;
+      photoStatus.textContent = "Foto uploaden...";
+
+      const bestandsnaam = incidentId + "/" + Date.now() + "_" + geselecteerdBestand.name;
+
+      const { error: uploadError } = await supabaseClient
+        .storage.from('incident-photos').upload(bestandsnaam, geselecteerdBestand);
+
+      if (uploadError) {
+        photoStatus.textContent = "Fout: " + uploadError.message;
+        addPhotoBtn.disabled = false;
+        return;
+      }
+
+      await supabaseClient.from('photos').insert({
+        incident_id: incidentId,
+        storage_path: bestandsnaam,
+        description: photoDescription.value.trim() || null
+      });
+
+      await supabaseClient.from('timeline_events')
+        .insert({ incident_id: incidentId, event_text: "Foto toegevoegd" });
+
+      photoInput.value = "";
+      photoPreview.style.display = 'none';
+      photoDescription.value = "";
+      photoDescription.style.display = 'none';
+      addPhotoBtn.style.display = 'none';
+      addPhotoBtn.disabled = false;
+      photoStatus.textContent = "Toegevoegd";
+      setTimeout(() => { photoStatus.textContent = ""; }, 2000);
+
+      geselecteerdBestand = null;
+      laadFotos();
+      laadTijdlijn();
+    });
+
+    async function laadFotos() {
+      const { data: fotos } = await supabaseClient
+        .from('photos').select('*').eq('incident_id', incidentId).order('created_at', { ascending: false });
+
+      const listEl = document.getElementById('photos-list');
+      listEl.innerHTML = '';
+
+      (fotos || []).forEach(foto => {
+        const { data: urlData } = supabaseClient.storage.from('incident-photos').getPublicUrl(foto.storage_path);
+        const div = document.createElement('div');
+        div.className = 'photo-thumb';
+        div.innerHTML = `
+          <img src="${urlData.publicUrl}" onclick="window.open('${urlData.publicUrl}', '_blank')">
+          <button class="del-btn" data-id="${foto.id}" data-path="${foto.storage_path}">🗑️</button>
+        `;
+        listEl.appendChild(div);
+      });
+
+      listEl.querySelectorAll('.del-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          if (!confirm("Deze foto verwijderen?")) return;
+          await supabaseClient.storage.from('incident-photos').remove([btn.dataset.path]);
+          await supabaseClient.from('photos').delete().eq('id', btn.dataset.id);
+          laadFotos();
+        });
+      });
+    }
 
     // ---- Personen ----
     let geselecteerdeRol = null;
