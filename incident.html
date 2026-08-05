@@ -48,7 +48,7 @@
     }
     #incident-notes {
       width: 100%;
-      min-height: 140px;
+      min-height: 100px;
       background: #2c2c2e;
       color: white;
       border: none;
@@ -59,9 +59,20 @@
       margin-top: 10px;
       resize: vertical;
     }
-    #incident-notes:focus {
-      outline: 2px solid #ff453a;
+    #incident-notes:focus { outline: 2px solid #ff453a; }
+    #add-note-btn {
+      margin-top: 10px;
+      width: 100%;
+      background-color: #ff453a;
+      color: white;
+      border: none;
+      border-radius: 12px;
+      padding: 14px;
+      font-size: 17px;
+      font-weight: 600;
+      cursor: pointer;
     }
+    #add-note-btn:disabled { opacity: 0.5; }
     #save-status {
       font-size: 13px;
       color: #8e8e93;
@@ -81,8 +92,9 @@
     <div class="value" id="incident-location">-</div>
   </div>
 
-  <h2>Notities</h2>
-  <textarea id="incident-notes" placeholder="Voeg hier notities toe..." disabled></textarea>
+  <h2>Nieuwe notitie</h2>
+  <textarea id="incident-notes" placeholder="Typ hier een notitie..." disabled></textarea>
+  <button id="add-note-btn" disabled>Toevoegen</button>
   <div id="save-status"></div>
 
   <h2>Tijdlijn</h2>
@@ -98,12 +110,11 @@
 
     const titleInput = document.getElementById('incident-title-input');
     const notesInput = document.getElementById('incident-notes');
+    const addNoteBtn = document.getElementById('add-note-btn');
     const saveStatus = document.getElementById('save-status');
 
     let laatstOpgeslagenTitel = "";
-    let laatstOpgeslagenNotes = "";
     let titleTimer = null;
-    let notesTimer = null;
 
     async function laadIncident() {
       if (!incidentId) {
@@ -126,9 +137,8 @@
       laatstOpgeslagenTitel = incident.title || "";
       titleInput.disabled = false;
 
-      notesInput.value = incident.notes || "";
-      laatstOpgeslagenNotes = incident.notes || "";
       notesInput.disabled = false;
+      addNoteBtn.disabled = false;
 
       const datum = new Date(incident.created_at);
       document.getElementById('incident-datetime').textContent = datum.toLocaleString('nl-BE');
@@ -173,7 +183,6 @@
       const nieuweWaarde = titleInput.value.trim();
       if (nieuweWaarde === laatstOpgeslagenTitel) return;
 
-      saveStatus.textContent = "Opslaan...";
       await supabaseClient
         .from('incidents')
         .update({ title: nieuweWaarde, updated_at: new Date().toISOString() })
@@ -184,27 +193,28 @@
         .insert({ incident_id: incidentId, event_text: "Titel aangepast" });
 
       laatstOpgeslagenTitel = nieuweWaarde;
-      saveStatus.textContent = "Opgeslagen";
       laadTijdlijn();
-      setTimeout(() => { saveStatus.textContent = ""; }, 2000);
     }
 
-    async function slaNotitieOp() {
-      const nieuweWaarde = notesInput.value.trim();
-      if (nieuweWaarde === laatstOpgeslagenNotes) return;
+    async function voegNotitieToe() {
+      const tekst = notesInput.value.trim();
+      if (!tekst) return;
 
-      saveStatus.textContent = "Opslaan...";
-      await supabaseClient
-        .from('incidents')
-        .update({ notes: nieuweWaarde, updated_at: new Date().toISOString() })
-        .eq('id', incidentId);
+      addNoteBtn.disabled = true;
+      saveStatus.textContent = "Toevoegen...";
 
       await supabaseClient
         .from('timeline_events')
-        .insert({ incident_id: incidentId, event_text: "Notitie aangepast" });
+        .insert({ incident_id: incidentId, event_text: tekst });
 
-      laatstOpgeslagenNotes = nieuweWaarde;
-      saveStatus.textContent = "Opgeslagen";
+      await supabaseClient
+        .from('incidents')
+        .update({ updated_at: new Date().toISOString() })
+        .eq('id', incidentId);
+
+      notesInput.value = "";
+      addNoteBtn.disabled = false;
+      saveStatus.textContent = "Toegevoegd";
       laadTijdlijn();
       setTimeout(() => { saveStatus.textContent = ""; }, 2000);
     }
@@ -215,11 +225,7 @@
     });
     titleInput.addEventListener('blur', slaTitelOp);
 
-    notesInput.addEventListener('input', () => {
-      clearTimeout(notesTimer);
-      notesTimer = setTimeout(slaNotitieOp, 1500);
-    });
-    notesInput.addEventListener('blur', slaNotitieOp);
+    addNoteBtn.addEventListener('click', voegNotitieToe);
 
     laadIncident();
   </script>
